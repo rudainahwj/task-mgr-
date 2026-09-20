@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+@theme {
+  --font-vt323: 'VT323', monospace;
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-inter: 'Inter', sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.9; }
+}
+
+@keyframes glitch {
+  0%   { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
+  25%  { text-shadow: -2px 0 #ff00ff, 2px 0 #00ffff; }
+  50%  { text-shadow: 2px 0 #00ffff, -2px 0 #ff00ff; }
+  75%  { text-shadow: -1px 0 #ff2d78, 1px 0 #00ffff; }
+  100% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
+}
+
+.animate-blink::after {
+  content: '█';
+  animation: blink 1s step-end infinite;
+  margin-left: 2px;
+}
+
+.animate-glitch { animation: glitch 4s infinite; }
+.animate-twinkle { animation: twinkle var(--tw-duration, 3s) infinite var(--tw-delay, 0s); }
+
+/* Retro scanlines */
+.dark-scanlines::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(0, 0, 0, 0.12) 2px,
+          rgba(0, 0, 0, 0.12) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #0a000f; }
+::-webkit-scrollbar-thumb { background: #ff00ff; }
