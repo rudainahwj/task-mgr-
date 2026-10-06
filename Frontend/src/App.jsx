@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import TaskCard from "./components/TaskCard.jsx";
 import TaskModal from "./components/TaskModal";
+import AuthPage from "./components/auth/AuthPage";
+import LandingPage from "./components/landing/LandingPage";
 import {
     getTasks,
     createTask,
@@ -9,6 +11,9 @@ import {
     deleteTask as deleteTaskApi,
 } from "./services/taskService";
 import { PRIORITY_ORDER } from "./constants/taskConstants";
+import { getCurrentUser,
+         logoutUser,
+} from "./services/authService";
 
 
 
@@ -36,11 +41,46 @@ export default function App() {
     const [filterPriority, setFilterPriority] = useState("all");
     const [sortBy, setSortBy] = useState("default");
     const [search, setSearch] = useState("");
-
-
+    const [page, setPage] = useState("landing");
+    const [authMode, setAuthMode] = useState("login");
     const dark = theme === "dark";
+    const [user, setUser] = useState(null);
+    const [checkingAuth, setCheckingAuth] = useState(true);
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const handleLogout = async () => {
+        try {
+            await logoutUser();
+
+            setUser(null);
+            setTasks([]);
+            setPage("landing");
+        } catch (error) {
+            console.error("Logout failed:", error);
+        }
+        setShowUserMenu(false);
+    };
+
+    console.log("CURRENT USER:", user);
 
 
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const currentUser = await getCurrentUser();
+
+                if (currentUser) {
+                    setUser(currentUser);
+                    setPage("dashboard");
+                }
+            } catch (error) {
+                console.error("Failed to check authentication:", error);
+            } finally {
+                setCheckingAuth(false);
+            }
+        };
+
+        checkAuth();
+    }, []);
 
     const fetchTasks = async () => {
         try {
@@ -56,8 +96,10 @@ export default function App() {
     }
 
     useEffect(() => {
-        fetchTasks();
-    }, []);
+        if (user) {
+            fetchTasks();
+        }
+    }, [user]);
 
     const addTask = async (newTaskData) => {
         const savedTask = await createTask(newTaskData);
@@ -149,6 +191,56 @@ export default function App() {
         ? "px-3 py-2 text-sm font-mono bg-[#0d0020] border border-fuchsia-500/50 text-fuchsia-100 placeholder-fuchsia-900 focus:outline-none focus:border-fuchsia-400 focus:shadow-[0_0_8px_#ff00ff66] transition-shadow"
         : "px-3 py-2 text-sm bg-white border border-slate-200 text-slate-800 rounded-lg focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 transition";
 
+    if (checkingAuth) {
+        return (
+            <div
+                className={
+                    dark
+                        ? "min-h-screen bg-[#050008] text-purple-300 flex items-center justify-center font-mono tracking-[0.2em]"
+                        : "min-h-screen bg-[#f8f9fc] text-slate-500 flex items-center justify-center"
+                }
+            >
+                {dark ? ">> LOADING <<" : "Loading..."}
+            </div>
+        );
+    }
+
+    if (page === "landing") {
+        return (
+            <LandingPage
+                dark={dark}
+                onToggleTheme={() =>
+                    setTheme(dark ? "light" : "dark")
+                }
+                onSignIn={() => {
+                    setAuthMode("login");
+                    setPage("auth");
+                }}
+                onGetStarted={() => {
+                    setAuthMode("register");
+                    setPage("auth");
+                }}
+            />
+        );
+    }
+
+    if (page === "auth") {
+        return (
+            <AuthPage
+                initialMode={authMode}
+                dark={dark}
+                onToggleTheme={() =>
+                    setTheme(dark ? "light" : "dark")
+                }
+                onBack={() => setPage("landing")}
+                onLogin={(loggedInUser) => {
+                    setUser(loggedInUser);
+                    setPage("dashboard");
+                }}
+            />
+        );
+    }
+
     return (
         <div className={`min-h-full relative ${dark ? "bg-[#0a000f] text-fuchsia-100 dark-scanlines" : "bg-slate-50 text-slate-800"}`}>
 
@@ -185,15 +277,138 @@ export default function App() {
               {dark ? "TASK://MGR" : "TaskManager"}
             </span>
                     </div>
+                    <div className="flex items-center gap-4">
                     <button
+                        type="button"
                         onClick={() => setTheme(dark ? "light" : "dark")}
-                        className={dark
-                            ? "font-mono text-[11px] text-cyan-400 border border-cyan-500/40 px-3 py-1.5 hover:border-cyan-400 hover:shadow-[0_0_8px_#00ffff44] transition-all tracking-widest cursor-pointer"
-                            : "text-xs font-medium text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg hover:border-slate-300 hover:text-slate-700 transition-colors cursor-pointer"
+                        className={
+                            dark
+                                ? "border border-cyan-900 px-4 h-10 font-mono text-xs tracking-[0.2em] text-cyan-300 hover:border-cyan-400 hover:text-white transition"
+                                : "px-4 h-10 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
                         }
                     >
-                        {dark ? "☀ LIGHT" : "☾ NIGHT"}
+                        {dark ? "☼ LIGHT" : "☾ Dark mode"}
                     </button>
+                    {user && (
+                        <div className="relative">
+                            {/* Profile trigger */}
+                            <button
+                                type="button"
+                                onClick={() => setShowUserMenu((prev) => !prev)}
+                                className={`flex items-center gap-2 transition-all ${
+                                    dark
+                                        ? "border border-purple-700 bg-[#0f0018] hover:border-fuchsia-400 p-0.5"
+                                        : "border-2 border-slate-200 hover:border-violet-400 rounded-full p-0.5 bg-white"
+                                }`}
+                            >
+                                {/* Avatar */}
+                                <div
+                                    className={`relative w-9 h-9 flex items-center justify-center text-xl select-none ${
+                                        dark
+                                            ? "bg-[#1a0030] border border-purple-600"
+                                            : "bg-violet-50 border border-violet-200 rounded-full"
+                                    }`}
+                                >
+                                    {user.avatar || "🔮"}
+
+                                    {/* Online indicator */}
+                                    <span
+                                        className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 bg-emerald-400 ${
+                                            dark ? "border-[#0a000f]" : "border-white"
+                                        }`}
+                                    />
+                                </div>
+
+                                {/* Username */}
+                                <span
+                                    className={`text-xs max-w-32 truncate ${
+                                        dark
+                                            ? "font-mono tracking-[0.08em] text-purple-100"
+                                            : "font-medium text-slate-700"
+                                    }`}
+                                >
+                {user.name}
+            </span>
+
+                                {/* Arrow */}
+                                <span
+                                    className={`text-[10px] mr-1 ${
+                                        dark ? "text-purple-400" : "text-slate-400"
+                                    }`}
+                                >
+                {showUserMenu ? "▲" : "▼"}
+            </span>
+                            </button>
+
+                            {/* Dropdown */}
+                            {showUserMenu && (
+                                <div
+                                    className={`absolute right-0 top-full mt-2 z-50 min-w-56 py-2 ${
+                                        dark
+                                            ? "bg-[#0f0018] border border-purple-700 shadow-[0_8px_30px_rgba(0,0,0,0.45)]"
+                                            : "bg-white border border-slate-200 rounded-xl shadow-xl"
+                                    }`}
+                                >
+                                    {/* User info */}
+                                    <div className="flex items-center gap-2.5 px-3 py-3">
+                                        <div
+                                            className={`w-9 h-9 shrink-0 flex items-center justify-center text-xs ${
+                                                dark
+                                                    ? "bg-[#1a0030] border border-purple-600"
+                                                    : "bg-violet-50 border border-violet-200 rounded-full"
+                                            }`}
+                                        >
+                                            {user.avatar || "🔮"}
+                                        </div>
+
+                                        <div className="min-w-0">
+                                            <p
+                                                className={`text-sm truncate ${
+                                                    dark
+                                                        ? "font-mono font-bold tracking-[0.06em] text-purple-100"
+                                                        : "font-semibold text-slate-800"
+                                                }`}
+                                            >
+                                                {user.name}
+                                            </p>
+
+                                            <p
+                                                className={`text-xs truncate mt-0.5 ${
+                                                    dark
+                                                        ? "font-mono text-purple-400"
+                                                        : "text-slate-500"
+                                                }`}
+                                            >
+                                                {user.email}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Logout */}
+                                    <div
+                                        className={
+                                            dark
+                                                ? "border-t border-fuchsia-900/60 mt-1"
+                                                : "border-t border-slate-100 mt-1"
+                                        }
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={handleLogout}
+                                            className={`w-full text-left px-3 py-2.5 transition ${
+                                                dark
+                                                    ? "font-mono text-xs tracking-[0.12em] text-rose-400 hover:bg-purple-950/40 transition"
+                                                    : "text-sm font-medium text-red-600 hover:bg-red-50"
+                                            }`}
+                                        >
+                                            {dark ? "⏻  // LOGOUT" : "⏻  Log out"}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
                 </div>
             </header>
 
@@ -240,14 +455,15 @@ export default function App() {
                     ].map((stat) => (
                         <div
                             key={stat.label}
-                            className={`p-4 flex flex-col gap-1 ${
+                            className={`px-4 py-3.5 flex flex-col gap-1 ${
                                 dark
-                                    ? "bg-[#0f0018] border border-fuchsia-500/25"
+                                    ? "bg-[#0f0018]/80 border border-fuchsia-500/30"
                                     : "bg-white border border-slate-200 rounded-xl shadow-sm"
                             }`}
                         >
-              <span className={`font-mono text-[10px] tracking-[0.12em] uppercase ${dark ? "text-fuchsia-500/60" : "text-slate-400"}`}>
-                {stat.label}
+             <span className={`font-mono text-[10px] tracking-[0.16em] uppercase ${
+                 dark ? "text-fuchsia-500/60" : "text-slate-400"
+             }`}>
               </span>
                             <span className={`font-['VT323'] text-4xl leading-none ${stat.color}`}>
                 {stat.count.toString().padStart(2, "0")}

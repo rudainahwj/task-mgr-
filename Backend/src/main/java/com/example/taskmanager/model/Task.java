@@ -3,6 +3,8 @@ package com.example.taskmanager.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "task")
 public class Task {
@@ -20,6 +22,11 @@ public class Task {
 
     @Enumerated(EnumType.STRING)
     private TaskPriority priority;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 
 
     //Getters and Setters
@@ -40,4 +47,7 @@ public class Task {
 
     public TaskPriority getPriority() { return priority; }
     public void setPriority(TaskPriority priority) { this.priority = priority; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 }
